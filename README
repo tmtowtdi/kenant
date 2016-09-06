@@ -1,0 +1,142 @@
+
+Be sure you're using a really recent version of docker, and that you have 
+docker-compose installed as well.  I have an Evernote note on installing this 
+stuff.
+    The docker on samwise is not, as of 08/31/2016, recent enough -- I still 
+    need to follow that evernote there.
+
+
+To get the game running, you must first start the SERVER, and then start the 
+WEB client.
+
+
+SHELL SCRIPTS NOT WORKING {#{{{
+    I've run into multiple executable shell scripts that the docs explicitly 
+    tell me to run as
+        ./script.sh
+
+    But none of these scripts contain shebang lines (derp).  So far, they've 
+    all worked, I just need to add the shebangs first.
+}#}}}
+API DOCS {#{{{
+    https://github.com/Kantigen/ka-api-docs
+
+    This is the documentation that used to be found at kenoantigen.com before 
+    they changed that to just a splash screen.
+
+    You do not need to mess with this to get the game running -- skip this 
+    section unless you specifically want to look at the docs.
+
+    - run ./run_docker.sh
+        - It had no shebang line; I had to add that.
+        - Port 4000 was already in use (I think nomachine is using that), so I 
+          had to change to 4001.
+    - That connects you to the container in bash.
+    - Start the server with
+        $ jekyll serve
+    - Hit the docs with your browser at http://0.0.0.0:4001/
+        - I thought that localhost wasn't working, but it is.
+}#}}}
+PERL CLIENT {#{{{
+    https://github.com/Kantigen/kac-perl-client
+
+    Probably not worth checking out of git (as of 09/2016).  It's essentially 
+    a skeleton project at this point.
+}#}}}
+SERVER {#{{{
+    https://github.com/Kantigen/ka-server
+
+    Setup {#{{{
+        https://github.com/Kantigen/ka-server/blob/master/info/setup.md
+
+        - On Step 3, after creating etc/, edit your new etc/keno-antigen.conf
+            Find "server_url" and change the hardcoded IP to "localhost".
+
+    }#}}}
+    Changes I've made to the code {#{{{
+        If you change any code, you'll want to re-build the ka-server image 
+        and containers the next time you run docker-compose up.
+
+        Do this, then your next call to "docker compose up" will rebuild for 
+        you:
+            docker stop ka-web
+            docker rm ka-server
+            docker rm ka-websocket
+            docker rm ka-bg-worker
+            docker rmi ka-server<TAB>
+
+        ...no it won't.  There's something wrong with the build process and I 
+        can't actually rebuild the containers.
+
+        lib/KA/Tutorial.pm {#{{{
+            The tut has a bunch of calls like these:
+                $home->add_trona(700);
+                $home->add_bread(700);
+
+            Somebody thought better of that, and the calls are now actually
+                        $home->add_ore_type($type, $num);
+                        $home->add_food_type($type, $num);
+
+            But that "somebody" didn't change the tutorial calls.  Fix calls 
+            for these foods:
+                algae, apple, bread, cheese
+            ...and these ores:
+                bauxite, rutile, trona
+
+            BE CAREFUL!  Most of the $num values are "700", but not all of 
+            them.  Pay attention to the value you're replacing.
+        }#}}}
+    }#}}}
+
+    Start the server:
+                docker-compose up
+        This builds all images and containers for you, and then starts them.
+
+        A lot of gunk will scroll up your screen.  It's tough to catch, but 
+        this does show up:
+                ka-server                | Server Started
+                ka-server                | HTTP::Server::PSGI: Accepting connections at http://0:5000/
+
+
+
+    These aren't part of starting the server, they're just here for debugging 
+    help if you need them:
+        Connect to the database:
+                ./connect-mysql.sh
+            The database name is 'keno'
+
+        Connect to the server:
+                ./connect-server.sh
+            This just connects you to the running server container in bash.
+
+        
+}#}}}
+WEB {#{{{
+    https://github.com/Kantigen/ka-web
+
+    - Make sure that the server is running first.
+
+    - If you have ever started the web client before, the container already 
+      exists, so just start it with:
+            - docker start ka-web
+    
+    - If you have not started the web client before, create and start the 
+      container in the background:
+            - ./run-ka-web-background.sh
+        Yeah, runs in the background so you don't have to dedicate a terminal 
+        tab to this.
+
+    - Connect via bash:
+            - ./run-ka-web.sh
+
+    - Hit in your browser:
+            - http://localhost:8080/
+
+    - When you try to create an empire, the captcha image won't show up, but a 
+      correct response is still required.  You're working with a dummy captcha 
+      at this point.  The response is just the integer '1'.
+        - I'm using empire name 'tmtowtdi', password 'testtest'
+            - pw must be at least 6 chars.
+
+}#}}}
+
